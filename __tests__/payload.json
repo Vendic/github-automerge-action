@@ -1,0 +1,8 @@
+{
+    "action": "opened",
+    "number": 2,
+    "pull_request": {
+        "body": "Hello world",
+        "title": "ABC-123 Your pull request (automerge)"
+    }
+}

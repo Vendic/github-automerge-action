@@ -1,0 +1,19 @@
+name: 'pr-automerge-action'
+description: 'Automatically merges a PR based on the text that is included in the PR title'
+author: 'Tjitse-E'
+runs:
+    using: 'node12'
+    main: './merge.js'
+inputs:
+    token:
+        description: Your github token
+        required: true
+    title-contains:
+        description: The pull request will be auto merged we will find this in the PR title
+        default: automerge
+        required: false
+outputs:
+    auto-merged:
+        description: Output is set when the PR is auto merged.
+    not-merged:
+        description: Output is set when the PR is not auto merged
