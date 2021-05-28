@@ -10,8 +10,9 @@
         "noUnusedParameters": true,
         "noImplicitAny": true,
         "removeComments": false,
-        "preserveConstEnums": true
+        "preserveConstEnums": true,
+        "outDir": "dist/"
     },
     "include": [".github/actions/**/*.ts", "**/*.ts"],
-    "exclude": ["node_modules"]
+    "exclude": ["node_modules", "__tests__"]
 }

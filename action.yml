@@ -3,7 +3,7 @@ description: 'Automatically merges a PR based on the text that is included in th
 author: 'Tjitse-E'
 runs:
     using: 'node12'
-    main: './merge.js'
+    main: 'dist/merge.js'
 inputs:
     token:
         description: Your github token
