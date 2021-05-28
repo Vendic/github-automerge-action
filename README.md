@@ -15,7 +15,8 @@ jobs:
                 with:
                     fetch-depth: 1
 
-            -   uses: Vendic/github-automerge-action@develop
+            -   name: Auto merge action
+                uses: Vendic/github-automerge-action@1.0.0
                 with:
                     token: ${{ secrets.GITHUB_TOKEN }}
                     title-contains: automerge
