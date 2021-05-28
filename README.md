@@ -6,7 +6,9 @@ Create a new workflow, for example `.github/workflows/automerge.yml`:
 
 ```yaml
 name: 'Auto merge workflow'
-on: [ pull_request ]
+on:
+  pull_request:
+    types: [ opened ]
 
 jobs:
     build:
