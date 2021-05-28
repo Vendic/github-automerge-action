@@ -1,0 +1,1 @@
+# Github automerge action [![Tests](https://github.com/Vendic/github-automerge-action/actions/workflows/tests.yml/badge.svg)](https://github.com/Vendic/github-automerge-action/actions/workflows/tests.yml) 
