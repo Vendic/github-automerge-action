@@ -22,6 +22,8 @@ jobs:
             -   name: Auto merge action
                 uses: Vendic/github-automerge-action@1.0.0
                 with:
+                    # Optionally you can also specify a pull number when not in the pull request context
+                    pull_number: ${{ env.PULL_NUMBER }}
                     token: ${{ secrets.GITHUB_TOKEN }}
                     title-contains: automerge
                 id: merge-action
