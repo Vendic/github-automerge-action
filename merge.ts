@@ -41,6 +41,7 @@ const run = async (): Promise<void> => {
         core.info(`PR #${pull_number} merged successfully.`)
         core.setOutput('auto-merged', true)
     } catch (error) {
+        core.setOutput('not-merged', true)
         core.setFailed(`Action failed: ${error}`)
     }
 }
