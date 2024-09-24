@@ -2,7 +2,7 @@ name: 'pr-automerge-action'
 description: 'Automatically merges a PR based on the text that is included in the PR title'
 author: 'Tjitse-E'
 runs:
-    using: 'node16'
+    using: 'node20'
     main: 'dist/index.js'
 inputs:
     token:

@@ -1,77 +1,151 @@
-// Mocking the github context https://github.com/actions/toolkit/blob/master/docs/github-package.md#mocking-the-github-context
+// __tests__/merge.test.ts
+import * as core from '@actions/core';
+import * as github from '@actions/github';
+import run from '../merge'; // Adjust the import path as needed
 
-import * as github from '@actions/github'
-import * as core from '@actions/core'
-import run from '../merge'
-import path from "path";
-import * as fs from "fs";
-import {WebhookPayload} from "@actions/github/lib/interfaces";
-import nock from "nock";
+jest.mock('@actions/core');
+jest.mock('@actions/github');
 
-describe('Test happy path', () => {
-    it('does a call to the Github REST API', async () => {
-        // Mocks
-        const infoMock = jest.spyOn(core, 'info')
-        const setOutputMock = jest.spyOn(core, 'setOutput')
-        nock('https://api.github.com')
-            .persist()
-            .put('/repos/foo/bar/pulls/2/merge')
-            .reply(200)
+describe('Auto Merge Action', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
 
-        await run()
+        // Reset the mocked context
+        (github.context as any).repo = { owner: 'default-owner', repo: 'default-repo' };
+        (github.context as any).payload = {};
+    });
 
-        // Assertions
-        expect(infoMock).toHaveBeenCalledWith('PR #2 merged successfully.')
-        expect(setOutputMock).toHaveBeenCalledWith('auto-merged', true)
-    })
-})
+    it('should not merge when no pull request number is provided', async () => {
+        // Mock inputs
+        (core.getInput as jest.Mock).mockImplementation((name: string) => {
+            if (name === 'token') return 'fake-token';
+            return '';
+        });
 
-describe('Test correct string is not included in the PR title', () => {
-    it('does no calls to the Github REST API, but just ends the function', async () => {
-        // Mocks
-        const infoMock = jest.spyOn(core, 'info')
-        const setOutputMock = jest.spyOn(core, 'setOutput')
-        // Override PR title do it doens't include the automege
-        // @ts-ignore
-        github.context.payload.pull_request.title = 'ABC-123 Your pull request'
+        // Ensure github.context.payload.pull_request is undefined
+        (github.context as any).payload.pull_request = undefined;
 
-        await run()
+        const infoMock = core.info as jest.Mock;
+        const setOutputMock = core.setOutput as jest.Mock;
 
-        // Assertions
-        expect(infoMock).toHaveBeenCalledWith('The PR title "ABC-123 Your pull request" does not include "automerge", do not automerge.')
-        expect(setOutputMock).toHaveBeenCalledWith('not-merged', true)
-    })
-})
+        await run();
 
-describe('Test that the action only works for pull request opened', () => {
-    it('does no calls to the Github REST API, but just ends the function', async () => {
-        // Mocks
-        const infoMock = jest.spyOn(core, 'info')
-        const setOutputMock = jest.spyOn(core, 'setOutput')
-        // Override PR title do it doens't include the automege
-        // @ts-ignore
-        github.context.payload.action = 'closed'
+        expect(infoMock).toHaveBeenCalledWith(
+            'No pull request number provided (via context or input), do not automerge.'
+        );
+        expect(setOutputMock).toHaveBeenCalledWith('not-merged', true);
+    });
 
-        await run()
+    it('should not merge when PR title does not contain search string', async () => {
+        // Mock inputs
+        (core.getInput as jest.Mock).mockImplementation((name: string) => {
+            if (name === 'token') return 'fake-token';
+            if (name === 'pull_number') return '123';
+            if (name === 'title-contains') return 'automerge';
+            return '';
+        });
 
-        // Assertions
-        expect(infoMock).toHaveBeenCalledWith('You can only run this action on the pull request opened event.')
-        expect(setOutputMock).toHaveBeenCalledWith('not-merged', true)
-    })
-})
+        // Set github.context.repo
+        (github.context as any).repo = { owner: 'owner', repo: 'repo' };
 
+        const octokitMock = {
+            rest: {
+                pulls: {
+                    get: jest.fn().mockResolvedValue({
+                        data: {
+                            title: 'Update README',
+                        },
+                    }),
+                },
+            },
+        };
 
+        (github.getOctokit as jest.Mock).mockReturnValue(octokitMock);
 
-beforeEach(() => {
-    jest.resetModules()
-    process.env['INPUT_TOKEN'] = 'xyz'
-    process.env['GITHUB_REPOSITORY'] = 'foo/bar';
-    const payloadPath = path.join(__dirname, 'payload.json');
-    const payload = JSON.parse(fs.readFileSync(payloadPath, 'utf8'))
-    github.context.payload = payload as WebhookPayload
-})
+        const infoMock = core.info as jest.Mock;
+        const setOutputMock = core.setOutput as jest.Mock;
 
-afterEach(() => {
-    delete process.env['GITHUB_REPOSITORY']
-    delete process.env['INPUT_TOKEN']
-})
+        await run();
+
+        expect(infoMock).toHaveBeenCalledWith(
+            'The PR title "Update README" does not include "automerge", do not automerge.'
+        );
+        expect(setOutputMock).toHaveBeenCalledWith('not-merged', true);
+    });
+
+    it('should merge when PR title contains search string', async () => {
+        // Mock inputs
+        (core.getInput as jest.Mock).mockImplementation((name: string) => {
+            if (name === 'token') return 'fake-token';
+            if (name === 'pull_number') return '456';
+            if (name === 'title-contains') return 'automerge';
+            return '';
+        });
+
+        // Set github.context.repo
+        (github.context as any).repo = { owner: 'owner', repo: 'repo' };
+
+        const octokitMock = {
+            rest: {
+                pulls: {
+                    get: jest.fn().mockResolvedValue({
+                        data: {
+                            title: 'Add new feature [automerge]',
+                        },
+                    }),
+                    merge: jest.fn().mockResolvedValue({ data: {} }),
+                },
+            },
+        };
+
+        (github.getOctokit as jest.Mock).mockReturnValue(octokitMock);
+
+        const infoMock = core.info as jest.Mock;
+        const setOutputMock = core.setOutput as jest.Mock;
+
+        await run();
+
+        expect(infoMock).toHaveBeenCalledWith(
+            '"automerge" found in the PR title! Automerging pull request.'
+        );
+        expect(octokitMock.rest.pulls.merge).toHaveBeenCalledWith({
+            owner: 'owner',
+            repo: 'repo',
+            pull_number: 456,
+        });
+        expect(infoMock).toHaveBeenCalledWith('PR #456 merged successfully.');
+        expect(setOutputMock).toHaveBeenCalledWith('auto-merged', true);
+    });
+
+    it('should handle errors and set action as failed', async () => {
+        // Mock inputs
+        (core.getInput as jest.Mock).mockImplementation((name: string) => {
+            if (name === 'token') return 'fake-token';
+            if (name === 'pull_number') return '789';
+            if (name === 'title-contains') return 'automerge';
+            return '';
+        });
+
+        // Set github.context.repo
+        (github.context as any).repo = { owner: 'owner', repo: 'repo' };
+
+        const error = new Error('API Error');
+        const octokitMock = {
+            rest: {
+                pulls: {
+                    get: jest.fn().mockRejectedValue(error),
+                },
+            },
+        };
+
+        (github.getOctokit as jest.Mock).mockReturnValue(octokitMock);
+
+        const setFailedMock = core.setFailed as jest.Mock;
+        const setOutputMock = core.setOutput as jest.Mock;
+
+        await run();
+
+        expect(setOutputMock).toHaveBeenCalledWith('not-merged', true);
+        expect(setFailedMock).toHaveBeenCalledWith(`Action failed: ${error}`);
+    });
+});
