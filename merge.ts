@@ -3,6 +3,27 @@ import * as github from '@actions/github'
 
 const run = async (): Promise<void> => {
     try {
+        const amsterdamTime = new Intl.DateTimeFormat(
+            'en-GB',
+            {
+                timeZone: 'Europe/Amsterdam',
+                hour12 : false,
+                hour   : '2-digit',
+                minute : '2-digit',
+            }
+        ).format(new Date()); // e.g. "08:45"
+
+        const [hourStr, minStr] = amsterdamTime.split(':');
+        const minutesNow   = Number(hourStr) * 60 + Number(minStr);
+        const minutesOpen  = 8 * 60 + 30;   // 08 : 30
+        const minutesClose = 16 * 60;       // 16 : 00  (exclusive)
+
+        if (minutesNow < minutesOpen || minutesNow >= minutesClose) {
+            core.info(`Current NL time is ${amsterdamTime} – outside 08:30-16:00, skipping automerge.`);
+            core.setOutput('not-merged', true);
+            return;
+        }
+
         const token = core.getInput('token');
         const octokit = github.getOctokit(token)
         const pull_number = core.getInput('pull_number') ??  github.context.payload.pull_request?.number
