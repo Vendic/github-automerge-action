@@ -1,27 +1,48 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
 
+const TIMEZONE = 'Europe/Amsterdam';
+const WINDOW_START = {hour: 8, minute: 30};
+const WINDOW_END = {hour: 16, minute: 0};
+/* ------------------------------------------------------------------ */
+
+const isWeekday = (date: Date): boolean => {
+    // 0 = Sun, 6 = Sat  (but in Amsterdam time)
+    const weekday = new Intl.DateTimeFormat('en-GB', {
+        timeZone: TIMEZONE,
+        weekday: 'short',
+    }).formatToParts(date).find(p => p.type === 'weekday')!.value;
+    return weekday !== 'Sat' && weekday !== 'Sun';
+};
+
+const isDuringWindow = (date: Date): boolean => {
+    const [h, m] = new Intl.DateTimeFormat('en-GB', {
+        timeZone: TIMEZONE,
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+    })
+        .format(date)
+        .split(':')
+        .map(Number);
+
+    const minutesNow = h * 60 + m;
+    const minutesStart = WINDOW_START.hour * 60 + WINDOW_START.minute;
+    const minutesEnd = WINDOW_END.hour * 60 + WINDOW_END.minute;
+
+    return minutesNow >= minutesStart && minutesNow < minutesEnd;
+};
+
+
 const run = async (): Promise<void> => {
     try {
-        const amsterdamTime = new Intl.DateTimeFormat(
-            'en-GB',
-            {
-                timeZone: 'Europe/Amsterdam',
-                hour12 : false,
-                hour   : '2-digit',
-                minute : '2-digit',
-            }
-        ).format(new Date()); // e.g. "08:45"
+        const currentDate = new Date()
 
-        const [hourStr, minStr] = amsterdamTime.split(':');
-        const minutesNow   = Number(hourStr) * 60 + Number(minStr);
-        const minutesOpen  = 8 * 60 + 30;   // 08 : 30
-        const minutesClose = 16 * 60;       // 16 : 00  (exclusive)
-
-        if (minutesNow < minutesOpen || minutesNow >= minutesClose) {
-            core.info(`Current NL time is ${amsterdamTime} – outside 08:30-16:00, skipping automerge.`);
-            core.setOutput('not-merged', true);
-            return;
+        // Check if the current date is a weekday and within the specified time window
+        if (!isWeekday(currentDate) || !isDuringWindow(currentDate)) {
+            core.info('Current time is outside the allowed window or it is a weekend, do not automerge.')
+            core.setOutput('not-merged', true)
+            return
         }
 
         const token = core.getInput('token');
